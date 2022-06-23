@@ -19,7 +19,6 @@ public class JoystickUi : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(0))
         {
-            //  gameObject.SetActive(true);
             transform.position = Input.mousePosition;
             _circle.transform.position = Input.mousePosition;
             _startPos = transform.position;
@@ -32,7 +31,6 @@ public class JoystickUi : MonoBehaviour
         }
         else if (Input.GetMouseButtonUp(0))
         {
-            // gameObject.SetActive(false);
             transform.position = _startPos;
             isMove = false;
         }

@@ -2,9 +2,13 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.UI;
 using UnityEngine;
+using UnityEngine.Events;
+
 
 public class Factory : MonoBehaviour
 {
+    public UnityEvent<ResourceType, string, string> ShowError;
+    public UnityEvent HideError;
     [SerializeField] private ResourceType _resourceType;
     [SerializeField] private ReceivingWarehouse[] _receivings;
     [SerializeField] private Storage _storage;
@@ -15,7 +19,10 @@ public class Factory : MonoBehaviour
     private float _currentTime;
     private int _currentTile;
     private bool isStoped;
-    private List<int> _id = new List<int>();
+
+    private string _noResources;
+    private string _noplace;
+
     private void Start()
     {
         _slider.maxValue = _time;
@@ -23,13 +30,15 @@ public class Factory : MonoBehaviour
     void Update()
     {
         if (isStoped || !CheckResource()) return;
+
+
         if (_currentTime < _time)
         {
             _currentTime += Time.deltaTime;
             _slider.value = _currentTime;
         }
-        else 
-        { 
+        else
+        {
             _currentTime = 0;
             SpawnResource();
         }
@@ -41,40 +50,53 @@ public class Factory : MonoBehaviour
         if (_resourceType == ResourceType.Time) isCan = true;
         else
         {
-            if (_receivings.Length > 1)
+            if (_receivings.Length >= 1)
             {
                 for (int i = 0; i < _receivings.Length; i++)
                 {
-                    if (_receivings[i].Tiles.Count <= 0)
+                    if (_receivings[i].Count <= 0)
                     {
                         isCan = false;
                         _fill.color = Color.red;
+                        _noResources = "Нет ресурсов";
+                        ShowError?.Invoke(_resourceType, _noResources, _noplace);
                         break;
                     }
                     else
                     {
                         _fill.color = Color.green;
                         isCan = true;
+                        HideError?.Invoke();
                     }
                 }
             }
-            else
-            {
-                if (_receivings[0].Tiles.Count <= 0)
-                {
-                    isCan = false;
-                    _fill.color = Color.red;
-                }
-                else
-                { 
-                    isCan = true;
-                    _fill.color = Color.green;
-                }
-            }
+
         }
         return isCan;
     }
-
+    private void SpawnResource()
+    {
+        if (_storage.PositionsFree.Count <= _currentTile || !ResourceUsage())
+        {
+            _fill.color = Color.red;
+            isStoped = true;
+            _noplace = "Нет места на складе";
+            ShowError?.Invoke(_resourceType, _noResources, _noplace);
+            return;
+        }
+        var res = Instantiate(_tile, transform.position, Quaternion.identity);
+        HideError?.Invoke();
+        foreach (var item in _storage.PositionsFree)
+        {
+            if (item.Value == true)
+            {
+                res.Init(item.Key, this);
+                _currentTile++;
+                _storage.PositionsFree[item.Key] = false;
+                break;
+            }
+        }
+    }
     private bool ResourceUsage()
     {
         bool isCan = false;
@@ -82,11 +104,14 @@ public class Factory : MonoBehaviour
         else
         {
 
-            if (_receivings.Length > 1)
+            if (_receivings.Length >= 1)
             {
                 for (int i = 0; i < _receivings.Length; i++)
                 {
-                    if (_receivings[i].Tiles.Count <= 0) isCan = false;
+                    if (_receivings[i].Count <= 0)
+                    {
+                        isCan = false;
+                    }
                     else
                     {
                         _receivings[i].RemoveItem();
@@ -94,47 +119,24 @@ public class Factory : MonoBehaviour
                     }
                 }
             }
-            else
-            {
-                if (_receivings[0].Tiles.Count <= 0) isCan = false;
-                else
-                {
-                    _receivings[0].RemoveItem();
-                    isCan = true;
-                }
-            }
+
+
             if (!isCan) isStoped = isCan;
         }
         return isCan;
     }
-    private void SpawnResource()
+
+    public void DeleteItem(Tile tile)
     {
-        var res = Instantiate(_tile, transform.position, Quaternion.identity);
-        if (_storage.PositionsFree.Count <= _currentTile || !ResourceUsage())
+        if (_storage.PositionsFree.ContainsKey(tile.Pos))
         {
-            _fill.color = Color.red;
-            isStoped = true;
-            return; 
-        }
-        if (_id.Count > 0)
-        { 
-            _currentTile = _id[0];
-            _id.RemoveAt(0);
-        }
-        res.Init(_currentTile , _storage.PositionsFree[_currentTile]);
-        res.ChangeStatus.AddListener(() => DeleteItem(res));
-        _currentTile++;
-    }
-    private void DeleteItem(Tile tile)
-    {
-        if (!_id.Contains(tile.Id))
-        {
-            _id.Add(tile.Id);
+            _storage.PositionsFree[tile.Pos] = true;
             isStoped = false;
             _currentTile--;
             _fill.color = Color.green;
         }
+
     }
 }
 
-public enum ResourceType { Note , Time , blue , red }
+public enum ResourceType { Note, Time, blue, red }

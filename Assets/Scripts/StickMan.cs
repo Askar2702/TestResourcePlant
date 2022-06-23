@@ -2,55 +2,65 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using System.Linq;
 public class StickMan : MonoBehaviour
 {
     [SerializeField] private Transform _baggage;
     public List<Tile> Tiles { get; private set; } = new List<Tile>();
     public Transform Baggage => _baggage;
     public Material Material { get; private set; }
-    private List<Transform> _tilePosBaggage = new List<Transform>();
-    public int Count => _tilePosBaggage.Count;
-    public event Action<string> ChangeCountItem;
-    public Transform this [int index]
+
+    private int _limit = 24;
+    [SerializeField] private MeshRenderer _meshTile;
+
+
+
+    private Vector3 CreatePosition(int i)
     {
-        get
-        {
-            return _tilePosBaggage[index];
-        }
-    }
-   
-  
-    public void AddBaggage(Tile tile)
-    {
-        Tiles.Add(tile);
-        tile.ChangeStatus.AddListener(() => RemoveBaggage(tile));
-        tile.ChangeStatus.AddListener(() => RemoveAt(tile.transform));
+        var mesh = _meshTile;
+        var MeshSize = mesh.bounds.size + new Vector3(0f, 0.02f, 0f); // это нужно для границы сетки
+        return new Vector3(Baggage.localPosition.x, Baggage.localPosition.y + i * MeshSize.y, Baggage.localPosition.z);
     }
 
-    private void RemoveBaggage(Tile tile)
+
+
+
+    public void RemoveItem(Tile tile)
     {
         if (Tiles.Contains(tile))
+        {
             Tiles.Remove(tile);
+        }
     }
 
-    public void Add(Transform item)
+
+
+    public async void CheckFreePosition()
     {
-        _tilePosBaggage.Add(item);
-    }
-    public void RemoveAt(Transform tile)
-    {
-        _tilePosBaggage.Remove(tile);
+        for (var i = 0; i < Tiles.Count; i++)
+        {
+            if (Tiles[i])
+                await Tiles[i].Move(CreatePosition(i), 0.1f);
+        }
+
     }
 
 
-    private void OnTriggerEnter(Collider collision)
-    {
-
-    }
     private void OnCollisionEnter(Collision collision)
     {
-        if (collision.transform.TryGetComponent(out Tile item))
-            item.RaiseItem(this);
+        if (collision.transform.TryGetComponent(out Tile tile))
+        {
+            if (Tiles.Count < _limit && !Tiles.Contains(tile))
+            {
+                Tiles.Add(tile);
+                tile.RaiseItem(this, CreatePosition(Tiles.IndexOf(tile)));
+            }
+        }
+
     }
+
+
+
 }
+
+

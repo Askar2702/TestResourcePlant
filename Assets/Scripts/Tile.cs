@@ -1,57 +1,57 @@
-﻿using DG.Tweening;
+﻿using System;
+using System.Collections;
+using DG.Tweening;
 using UnityEngine;
-using UnityEngine.Events;
+using System.Threading.Tasks;
 
-public class Tile : MonoBehaviour 
+public class Tile : MonoBehaviour
 {
-    [field:SerializeField] public ResourceType ResourceType { get; private set; }
-    public UnityEvent ChangeStatus;
+    [field: SerializeField] public ResourceType ResourceType { get; private set; }
+
     private bool isRaise = true;
-    public int Id { get; private set; }
-    public void Init(int id , Vector3 pos = new Vector3())
+    public Vector3 Pos { get; private set; }
+    private Factory _factory;
+
+    private StickMan _stickMan;
+    public void Init(Vector3 pos = new Vector3(), Factory factory = null)
     {
         if (pos != Vector3.zero)
-            transform.DOMove(pos, 0.3f);
-        Id = id;
+        {
+            Pos = pos;
+            transform.DOMove(Pos, 0.3f);
+        }
+        if (factory)
+            _factory = factory;
     }
 
-    public void RaiseItem(StickMan s)
+    public async void RaiseItem(StickMan s, Vector3 pos)
     {
         if (!isRaise) return;
-        RemoveTile();
-        LiftTile(s.Baggage, s);
+        _stickMan = s;
+        _factory.DeleteItem(this);
+        transform.parent = s.Baggage;
+        await Move(pos);
+        transform.rotation = s.Baggage.rotation;
     }
 
-    private void RemoveTile()
-    {
-        ChangeStatus?.Invoke();
-    }
-   
-    private void LiftTile(Transform baggage , StickMan stickMan)
-    {
-        var tilePosBaggage = stickMan;
-        var Mesh = transform.GetComponent<MeshRenderer>();
-        var MeshSize = Mesh.bounds.size + new Vector3(0f, 0.02f, 0f); // это нужно для границы сетки
-        var position = new Vector3(baggage.localPosition.x, baggage.localPosition.y + tilePosBaggage.Count * MeshSize.y, baggage.localPosition.z);
-        transform.parent = baggage;
-        transform.DOLocalMove(position, 0.3f);
-        transform.rotation = baggage.rotation;
-        tilePosBaggage.Add(transform);
-        stickMan.AddBaggage(this);
-    }
 
-    public void MoveStorage(Vector3 pos , Transform parent)
+    public async Task Move(Vector3 pos, float speed = 0.3f)
     {
-        RemoveTile();
+        Pos = pos;
+        var seq = DOTween.Sequence();
+        seq.Append(transform.DOLocalMove(Pos, speed));
+        await seq.AsyncWaitForCompletion();
+    }
+    public async Task MoveStorage(Vector3 pos, Transform parent)
+    {
         isRaise = false;
         transform.parent = null;
-        transform.DOMove(pos, 0.3f);
         transform.rotation = parent.rotation;
+        await Move(pos);
     }
 
     public void DestroySelf()
     {
-        ChangeStatus?.Invoke();
         Destroy(gameObject);
     }
 }

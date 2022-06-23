@@ -4,11 +4,10 @@ using UnityEngine;
 
 public class SpawnMap : MonoBehaviour
 {
- //   [SerializeField] private TileScriptableObject _tile;
     [SerializeField] private int _width; //ширина
     [SerializeField] private int _length;//длина
     [SerializeField] private GameObject _MapObject;
-   
+
     void Start()
     {
         Spawn();
@@ -35,12 +34,8 @@ public class SpawnMap : MonoBehaviour
     private GameObject GetTile()
     {
         var tile = Instantiate(_MapObject);
-      /*  tile.transform.localScale = _tile.Size;
-        tile.AddComponent<MeshFilter>().mesh = _tile.Mesh;
-        tile.AddComponent<MeshRenderer>().material = _tile.Material[Random.Range(0, _tile.Material.Length)];
-        tile.AddComponent<BoxCollider>().isTrigger = true;*/
         return tile;
     }
 
-   
+
 }
